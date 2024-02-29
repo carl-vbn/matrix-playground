@@ -10,7 +10,7 @@ export default function App({ Component, pageProps }: AppProps) {
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name="theme-color" content="#000000" />
       <meta name="keywords" content="matrix, math, linear algebra, matrix operations, matrix calculator, matrix playground" />
-      <link rel="icon" href="/favicon.ico" />
+      <link rel="icon" href="/logo.png" />
 
     </Head>
     <Component {...pageProps} />
