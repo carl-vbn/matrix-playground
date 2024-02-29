@@ -51,7 +51,14 @@ body {
 }
 
 .main-container .header {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
   background-color: #333;
+}
+
+.main-container .header img {
+  margin-right: 15px;
 }
 
 #main-area {

@@ -274,6 +274,7 @@ export default function Home() {
     <>
       <div className="main-container">
         <div className="header">
+          <img src='/logo.png' alt="Matrix Playground logo" width={50} />
           <h1>Matrix playground</h1>
         </div>
         <div id="main-area" className={currentOperation !== null ? 'operation-selected' : ''}>
