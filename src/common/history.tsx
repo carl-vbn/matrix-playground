@@ -3,7 +3,9 @@ import { Matrix } from "./math";
 import MatrixHTML from "./matrixHTML";
 
 export interface MatrixEntry {
-    matrix: Matrix;
+    mainMatrix: Matrix;
+    multiplyingMatrix: Matrix;
+    showMultiplyingMatrix: boolean;
     time: number;
 }
 
@@ -31,10 +33,11 @@ export function HistoryBar(props: { history: History, onEntryClicked: (entryInde
                 const selected = index === props.history.entries.length - 1 - props.history.backsteps;
                 return [
                     (
-                        <div key={index} className={`history-entry${selected ? ' selected' : ''}`} onClick={() => {
+                        <div key={index} className={`history-entry${selected ? ' selected' : ''}${entry.multiplyingMatrix ? ' double' : ''}`} onClick={() => {
                             props.onEntryClicked(index);
                         }}>
-                            <MatrixHTML matrix={entry.matrix} />
+                            <MatrixHTML matrix={entry.mainMatrix} />
+                            {entry.showMultiplyingMatrix && <><div className="symbol-container">&times;</div><MatrixHTML matrix={entry.multiplyingMatrix} /></>}
                         </div>
                     ),
                     (

@@ -361,12 +361,11 @@ body {
 
 .history-entry {
   flex: 0 0 auto;
-
   animation: bounceIn 0.2s;
   padding: 10px;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   justify-content: center;
   align-items: center;
   border: 1px solid transparent;
@@ -374,6 +373,11 @@ body {
   max-width: 200px;
   max-height: 200px;
   overflow: hidden;
+}
+
+.history-entry.double {
+  max-width: 450px;
+  max-height: 200px;
 }
 
 .history-entry:hover {
@@ -387,6 +391,11 @@ body {
 
 .history-entry.selected {
   border: 3px solid rgb(255, 50, 100);
+}
+
+.history-entry .symbol-container {
+  font-size: 20px;
+  padding: 5px;
 }
 
 #history-container .arrow {

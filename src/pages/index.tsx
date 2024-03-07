@@ -1,9 +1,9 @@
-import { History, HistoryBar } from "@/common/history";
+import { History, HistoryBar, MatrixEntry } from "@/common/history";
 import { Matrix, Scalar, parseScalar } from "@/common/math";
 import DimensionInput from "@/common/matrix-dimension-input";
 import MatrixHTML from "@/common/matrixHTML";
 import { Operation, OperationTypeName, newOperation, operationsDict } from "@/common/operations";
-import { SetStateAction, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [mainMatrix, setMainMatrix] = useState(new Matrix(3, 3, [[1, 2, 3], [4, 5, 6], [7, 8, 9]]));
@@ -11,19 +11,20 @@ export default function Home() {
   const [resultMatrix, setResultMatrix] = useState<Matrix | null>(new Matrix(3, 3, [[1, 2, 3], [4, 5, 6], [7, 8, 9]]));
   const [mainMatrixModifiedCells, setMainMatrixModifiedCells] = useState<[number, number][]>([]);
   const [multiplyingMatrixModifiedCells, setMultiplyingMatrixModifiedCells] = useState<[number, number][]>([]);
-  const [resultMatrixModifiedCells, setResultMatrixModifiedCells] = useState<[number, number][]>([]);
   const [multiplicationMode, setMultiplicationMode] = useState(false);
   const [highlightedMatrix, setHighlightedMatrix] = useState<'main' | 'multiplying' | 'result' | null>(null);
 
-  const [history, setHistory] = useState<History>({ entries: [{ time: Date.now(), matrix: mainMatrix.clone() }], backsteps: 0 });
+  const [history, setHistory] = useState<History>({ entries: [{ time: Date.now(), mainMatrix: mainMatrix.clone(), multiplyingMatrix: multiplyingMatrix.clone(), showMultiplyingMatrix: multiplicationMode }], backsteps: 0 });
   const [currentOperation, setCurrentOperation] = useState<Operation | null>(null);
   const [currentInstructionIndex, setCurrentInstructionIndex] = useState(0);
   const [historyChangeSinceLastDimensionChange, setHistoryChangeSinceLastDimensionChange] = useState(true);
 
-  function addHistoryEntry(matrix: Matrix) {
-    const newEntry = {
+  function addHistoryEntry(matrix: Matrix, multiplyingMatrix: Matrix) {
+    const newEntry: MatrixEntry = {
       time: Date.now(),
-      matrix: matrix.clone()
+      mainMatrix: matrix.clone(),
+      multiplyingMatrix: multiplyingMatrix.clone(),
+      showMultiplyingMatrix: multiplicationMode
     };
 
     if (history.backsteps > 0) {
@@ -33,6 +34,10 @@ export default function Home() {
     }
 
     setHistoryChangeSinceLastDimensionChange(true);
+  }
+
+  function amendLastHistoryEntry(mainMatrix: Matrix, multiplyingMatrix: Matrix) {
+    setHistory({ entries: history.entries.slice(0, history.entries.length - 1).concat({ time: Date.now(), mainMatrix: mainMatrix.clone(), multiplyingMatrix: multiplyingMatrix.clone(), showMultiplyingMatrix: multiplicationMode }), backsteps: history.backsteps });
   }
 
   function startOperation(operationTypeName: OperationTypeName) {
@@ -63,14 +68,17 @@ export default function Home() {
     }
 
     const matrixSetter = currentOperation.targetMatrix === mainMatrix ? setMainMatrix : currentOperation.targetMatrix === multiplyingMatrix ? setMultiplyingMatrix : setResultMatrix;
-    const matrixModifiedCellsSetter = currentOperation.targetMatrix === mainMatrix ? setMainMatrixModifiedCells : currentOperation.targetMatrix === multiplyingMatrix ? setMultiplyingMatrixModifiedCells : setResultMatrixModifiedCells;
+    const matrixModifiedCellsSetter = currentOperation.targetMatrix === mainMatrix ? setMainMatrixModifiedCells : currentOperation.targetMatrix === multiplyingMatrix ? setMultiplyingMatrixModifiedCells : null;
+    if (matrixModifiedCellsSetter === null) {
+      throw new Error('Invalid target matrix');
+    }
 
     currentOperation.selectedInteractionElements.forEach(ie => ie.classList.remove('selected'));
     const newMatrix = currentOperation.type.execute(currentOperation.targetMatrix!.clone(), currentOperation, modifiedCells);
     matrixSetter(newMatrix);
     matrixModifiedCellsSetter(modifiedCells);
 
-    addHistoryEntry(newMatrix);
+    addHistoryEntry(newMatrix, multiplyingMatrix);
     setCurrentOperation(null);
   }
 
@@ -102,13 +110,13 @@ export default function Home() {
     const inverseMatrix = mainMatrix.inverse();
 
     setMainMatrix(inverseMatrix);
-    addHistoryEntry(mainMatrix);
+    addHistoryEntry(mainMatrix, multiplyingMatrix);
   }
 
   function rref() {
     const newMatrix = mainMatrix.rref();
     setMainMatrix(newMatrix);
-    addHistoryEntry(newMatrix);
+    addHistoryEntry(newMatrix, multiplyingMatrix);
   }
 
   function copyLatex() {
@@ -148,7 +156,7 @@ export default function Home() {
       }
 
       setMainMatrix(newMatrix);
-      addHistoryEntry(newMatrix);
+      addHistoryEntry(newMatrix, multiplyingMatrix);
       setMainMatrixModifiedCells(modifiedCells);
     } catch (e) {
       console.error(e);
@@ -156,7 +164,7 @@ export default function Home() {
     }
   }
 
-  function updateMatrixDimensions(matrix: Matrix, matrixSetter: (value: SetStateAction<Matrix>) => void, rows: number, columns: number) {
+  function updateMatrixDimensions(matrix: Matrix, matrixSetter: (value: Matrix) => void, rows: number, columns: number) {
     if (isNaN(rows) || isNaN(columns) || rows < 1 || columns < 1) {
       return;
     }
@@ -170,17 +178,12 @@ export default function Home() {
     }
 
     matrixSetter(newMatrix);
-    if (historyChangeSinceLastDimensionChange) {
-      addHistoryEntry(newMatrix);
-    } else {
-      // Replace the last entry with the new matrix
-      setHistory({ entries: history.entries.slice(0, history.entries.length - 1).concat({ time: Date.now(), matrix: newMatrix.clone() }), backsteps: history.backsteps });
-    }
-    setHistoryChangeSinceLastDimensionChange(false);
   }
 
   function historyBackstepTo(entryIndex: number) {
-    setMainMatrix(history.entries[entryIndex].matrix);
+    setMainMatrix(history.entries[entryIndex].mainMatrix);
+    setMultiplyingMatrix(history.entries[entryIndex].multiplyingMatrix);
+    setMultiplicationMode(history.entries[entryIndex].showMultiplyingMatrix);
     setHistory({ entries: history.entries, backsteps: history.entries.length - 1 - entryIndex });
   }
 
@@ -319,9 +322,20 @@ export default function Home() {
               <MatrixHTML highlightColor={highlightedMatrix == 'main' ? "blue" : undefined} big matrix={mainMatrix} onCellChanged={(row, col, val) => {
                 const newMatrix = mainMatrix.set(row, col, val);
                 setMainMatrix(newMatrix);
-                addHistoryEntry(newMatrix);
+                addHistoryEntry(newMatrix, multiplyingMatrix);
               }} interaction={getInteractionFor(mainMatrix)} selectionCallback={onSelect} modifiedCells={mainMatrixModifiedCells} />
-              <DimensionInput rows={mainMatrix.rows} columns={mainMatrix.columns} onDimensionChange={(rows, columns) => updateMatrixDimensions(mainMatrix, setMainMatrix, rows, columns)} readonly={currentOperation != null} />
+              <DimensionInput rows={mainMatrix.rows} columns={mainMatrix.columns} onDimensionChange={(rows, columns) => updateMatrixDimensions(mainMatrix,
+                (updatedMatrix) => {
+                  setMainMatrix(updatedMatrix);
+
+                  if (historyChangeSinceLastDimensionChange) {
+                    addHistoryEntry(updatedMatrix, multiplyingMatrix);
+                  } else {
+                    amendLastHistoryEntry(updatedMatrix, multiplyingMatrix);
+                  }
+                  setHistoryChangeSinceLastDimensionChange(false);
+                },
+                rows, columns)} readonly={currentOperation != null} />
             </div>
             {multiplicationMode && (
               <>
@@ -332,8 +346,21 @@ export default function Home() {
                   <MatrixHTML highlightColor={highlightedMatrix == 'multiplying' ? "green" : undefined} big matrix={multiplyingMatrix} onCellChanged={(row, col, val) => {
                     const newMatrix = multiplyingMatrix.set(row, col, val);
                     setMultiplyingMatrix(newMatrix);
+                    addHistoryEntry(mainMatrix, newMatrix);
                   }} interaction={getInteractionFor(multiplyingMatrix)} selectionCallback={onSelect} modifiedCells={multiplyingMatrixModifiedCells} />
-                  <DimensionInput rows={multiplyingMatrix.rows} columns={multiplyingMatrix.columns} onDimensionChange={(rows, columns) => updateMatrixDimensions(multiplyingMatrix, setMultiplyingMatrix, rows, columns)} readonly={currentOperation != null} />
+                  <DimensionInput rows={multiplyingMatrix.rows} columns={multiplyingMatrix.columns} onDimensionChange={(rows, columns) => updateMatrixDimensions(mainMatrix,
+                    (updatedMatrix) => {
+                      setMultiplyingMatrix(updatedMatrix);
+
+                      if (historyChangeSinceLastDimensionChange) {
+                        addHistoryEntry(mainMatrix, updatedMatrix);
+                      } else {
+                        amendLastHistoryEntry(mainMatrix, updatedMatrix);
+                      }
+                      
+                      setHistoryChangeSinceLastDimensionChange(false);
+                    },
+                    rows, columns)} readonly={currentOperation != null} />
                 </div>
                 <div className="symbol-container">
                   <div>=</div>
