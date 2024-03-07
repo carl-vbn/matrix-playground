@@ -197,7 +197,7 @@ export default function Home() {
     } else if (event.ctrlKey) {
       if (event.key === 'z') {
         if (history.entries.length > 1) {
-          historyBackstepTo(history.entries.length - 2);
+          historyBackstepTo(history.entries.length - 2 - history.backsteps);
         }
         event.preventDefault();
       } else if (event.key === 'y') {
