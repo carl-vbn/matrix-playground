@@ -21,6 +21,10 @@ export default function DimensionInput(props: { rows: number | undefined, column
             return;
         }
 
+        if (rowsNumber === props.rows && columnsNumber === props.columns) {
+            return;
+        }
+
         if (props.onDimensionChange)
             props.onDimensionChange(rowsNumber, columnsNumber);
     }
