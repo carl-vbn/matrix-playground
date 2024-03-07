@@ -27,13 +27,13 @@ export default function MatrixHTML(props: {
     function onNumberChange(event: React.ChangeEvent<HTMLInputElement>) {
         const inputField = event.target;
         const [row, col]: [number, number] = inputField?.className?.match(/matrix-input-(\d+)-(\d+)/)?.slice(1).map(Number) as [number, number];
+        const oldValue = props.matrix.data[row][col];
         try {
             const value = parseScalar(inputField.value).simplify();
 
             inputField.value = value.toString();
             inputField.style.width = `${getMatrixInputWidthPX(value, true)}px`;
 
-            const oldValue = props.matrix.data[row][col];
             if (!oldValue.equals(value)) {
                 if (props.onCellChanged) props.onCellChanged(row, col, value);
                 markCellsAsModified([[row, col]]);
@@ -44,6 +44,10 @@ export default function MatrixHTML(props: {
         } catch (error) {
             console.error(error);
             event.preventDefault();
+
+            // Reset cell value to previous value
+            inputField.value = oldValue.toString();
+            inputField.style.width = `${getMatrixInputWidthPX(oldValue, true)}px`;
         }
     }
 
